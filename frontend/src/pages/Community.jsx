@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import ImagePicker from "../components/ImagePicker";
 import { api } from "../api";
+import { Gift, RefreshCw, Wrench } from "lucide-react";
+
+const ICONS = { donate: Gift, exchange: RefreshCw, repair: Wrench };
+const LABELS = { donate: "Donate", exchange: "Exchange", repair: "Repair tip" };
+const VERBS = { donate: "is donating", exchange: "wants to exchange", repair: "shared a repair tip" };
+const initials = (n) => n.trim().split(/\s+/).slice(0, 2).map((s) => s[0]).join("").toUpperCase();
+const isNew = (d) => Date.now() - new Date(d).getTime() < 24 * 60 * 60 * 1000;
 
 const CATS = { donate: "🎁 Donate", exchange: "🔄 Exchange", repair: "🔧 Repair tip" };
 const blank = { name: "", mobile: "", category: "donate", message: "" };
@@ -47,19 +54,55 @@ export default function Community() {
         {msg && <div className={msg.ok ? "ok" : "err"}>{msg.t}</div>}
       </form>
 
-      <div className="tabs">
-        <button className={`tab ${filter === "" ? "on" : ""}`} onClick={() => setFilter("")}>All</button>
-        {Object.entries(CATS).map(([k, v]) => <button key={k} className={`tab ${filter === k ? "on" : ""}`} onClick={() => setFilter(k)}>{v}</button>)}
-      </div>
-      {posts.length === 0 && <p className="sub">No posts yet. Be the first!</p>}
-      {posts.map((p) => (
-        <div className="card" key={p.id}>
-          <div className="item"><span className="badge info">{CATS[p.category]}</span><span className="muted">{new Date(p.created_at).toLocaleString()}</span></div>
-          <p style={{ whiteSpace: "pre-wrap" }}>{p.message}</p>
-          {p.photo_urls?.length > 0 && <div className="thumbs">{p.photo_urls.map((u) => <a key={u} href={u} target="_blank" rel="noreferrer"><img src={u} alt="" /></a>)}</div>}
-          <p><b>{p.name}</b> · <a href={`tel:${p.mobile}`}>{p.mobile}</a></p>
+            <section className="cb">
+        <div className="cb-head">
+          <h2>Activity</h2>
+          <span className="cb-badge">{posts.filter((p) => isNew(p.created_at)).length} New</span>
         </div>
-      ))}
+
+        <div className="cb-tabs-wrap">
+          <div className="cb-tabs" role="tablist">
+            <button role="tab" aria-selected={filter === ""} className={filter === "" ? "on" : ""} onClick={() => setFilter("")}>All</button>
+            {Object.entries(LABELS).map(([k, v]) => (
+              <button key={k} role="tab" aria-selected={filter === k} className={filter === k ? "on" : ""} onClick={() => setFilter(k)}>{v}</button>
+            ))}
+          </div>
+        </div>
+
+        {posts.length === 0 ? (
+          <p className="cb-empty">No posts yet. Be the first!</p>
+        ) : (
+          <ul className="cb-list">
+            {posts.map((p) => {
+              const Icon = ICONS[p.category] || Gift;
+              return (
+                <li className="cb-row" key={p.id}>
+                  <div className="cb-av">
+                    <div className="cb-avatar">{initials(p.name)}</div>
+                    <span className="cb-type"><Icon size={12} aria-hidden="true" /></span>
+                  </div>
+                  <div className="cb-body">
+                    <p className="cb-line">
+                      <span className="cb-name">{p.name}</span>{" "}
+                      <span className="cb-act">{VERBS[p.category]}</span>
+                    </p>
+                    <p className="cb-msg">{p.message}</p>
+                    {p.photo_urls?.length > 0 && (
+                      <div className="thumbs">
+                        {p.photo_urls.map((u) => <a key={u} href={u} target="_blank" rel="noreferrer"><img src={u} alt="" /></a>)}
+                      </div>
+                    )}
+                    <span className="cb-time">
+                      {new Date(p.created_at).toLocaleString()} · <a href={`tel:${p.mobile}`}>{p.mobile}</a>
+                    </span>
+                  </div>
+                  {isNew(p.created_at) && <span className="cb-dot" role="img" aria-label="New" />}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
     </>
   );
 }

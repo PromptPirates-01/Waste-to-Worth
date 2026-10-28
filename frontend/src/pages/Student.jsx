@@ -1,10 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
 import ImagePicker from "../components/ImagePicker";
 import { api, inr } from "../api";
-
+import { motion, useSpring, useTransform } from "framer-motion";
+import { Wallet as WalletIcon, ChevronUp } from "lucide-react";
 const P = "student";
 const TABS = [["wallet", "💰 Wallet"], ["bottle", "♻️ Bottle / wrapper"], ["donation", "🎁 Donation"], ["deals", "🍽️ Canteen deals"]];
 
+function Count({ value }) {
+  const spring = useSpring(0, { damping: 40, stiffness: 300 });
+  const text = useTransform(spring, (v) => v.toFixed(0));
+  useEffect(() => { spring.set(value); }, [value, spring]);
+  return <motion.span className="wc-big">{text}</motion.span>;
+}
 function Wallet({ w, refresh }) {
   const max = Math.floor(w.tokens / 10) * 10;
   const [t, setT] = useState(max);
@@ -19,17 +26,55 @@ function Wallet({ w, refresh }) {
   };
   return (
     <>
-      <div className="card">
-        <div className="big">{w.tokens} tokens</div>
-        <div>Worth <b>{inr(w.rupees)}</b> at the canteen · 50 tokens = ₹5</div>
-        <label>Tokens to redeem (multiples of 10)</label>
-        <div className="row">
-          <input style={{ maxWidth: 160 }} type="number" min={10} max={max} step={10} value={t} onChange={(e) => setT(e.target.value)} />
+      {(() => {
+  const goal = Math.max(100, Math.ceil((w.tokens + 1) / 100) * 100);
+  const pct = Math.min((w.tokens / goal) * 100, 100);
+  const canRedeem = max >= 10 && Number(t) >= 10 && Number(t) <= max;
+  return (
+    <div className="wc">
+      <header className="wc-head">
+        <div className="wc-id">
+          <div className="wc-ic"><WalletIcon size={24} /></div>
+          <div>
+            <h2 className="wc-title">Token Wallet</h2>
+            <p className="wc-sub">Worth {inr(w.rupees)} at the canteen</p>
+          </div>
+        </div>
+        <button type="button" className="wc-chev" aria-label="Collapse"><ChevronUp size={20} /></button>
+      </header>
+
+      <div className="wc-main">
+        <div className="wc-num">
+          <Count value={w.tokens} />
+          <span className="wc-of">of {goal}</span>
+          <span className="wc-unit">Tokens</span>
+        </div>
+        <div className="wc-bar">
+          <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 1.5, ease: "easeInOut" }} />
+        </div>
+      </div>
+
+      <div className="wc-list">
+        <h3>Ways to earn</h3>
+        <ul>
+          <li><span>Bottle / wrapper in a dustbin</span><span>+10 tokens</span></li>
+          <li><span>Donation with certificate</span><span>+20 tokens</span></li>
+        </ul>
+      </div>
+
+      <div className="wc-redeem">
+        <label htmlFor="redeem-tokens">Tokens to redeem <small>(10 tokens = ₹1)</small></label>
+        <div className="wc-redeem-row">
+          <input id="redeem-tokens" type="number" min={10} max={max} step={10} value={t} onChange={(e) => setT(e.target.value)} />
           <span>= {inr(Number(t) / 10)}</span>
-          <button className="btn" disabled={max < 10 || Number(t) < 10 || Number(t) > max} onClick={redeem}>Redeem</button>
         </div>
         {err && <div className="err">{err}</div>}
       </div>
+
+      <button className="wc-btn" disabled={!canRedeem} onClick={redeem}>Redeem tokens</button>
+    </div>
+  );
+})()}
       {last && (
         <div className="card">
           <b>Show this code at the canteen reception</b>
